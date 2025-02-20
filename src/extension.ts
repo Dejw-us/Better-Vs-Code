@@ -1,26 +1,85 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as path from 'path';
 
-// This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
+  let createFileDisposable = vscode.commands.registerCommand('extension.createFileInCurrentFolder', async () => {
+    const activeEditor = vscode.window.activeTextEditor;
 
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "better-vs-code" is now active!');
+    if (!activeEditor) {
+      vscode.window.showInformationMessage('No file is currently open.');
+      return;
+    }
 
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with registerCommand
-	// The commandId parameter must match the command field in package.json
-	const disposable = vscode.commands.registerCommand('better-vs-code.helloWorld', () => {
-		// The code you place here will be executed every time your command is executed
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello World from Better Vs Code!');
-	});
+    const currentFilePath = activeEditor.document.uri.fsPath;
+    const currentFolderPath = path.dirname(currentFilePath);
+    const currentFileExtension = path.extname(currentFilePath); // Get the extension of the current file
 
-	context.subscriptions.push(disposable);
+    // Ask user for the file name
+    const fileName = await vscode.window.showInputBox({
+      prompt: 'Enter the file name (e.g., newFile.txt)',
+      validateInput: (input) => {
+        if (!input.trim()) {
+          return 'File name cannot be empty';
+        }
+        return null;
+      }
+    });
+
+    if (fileName) {
+      // If no extension is provided by the user, append the extension of the current file
+      const fileExtension = path.extname(fileName) ? path.extname(fileName) : currentFileExtension;
+      const newFilePath = path.join(currentFolderPath, path.basename(fileName, path.extname(fileName)) + fileExtension);
+
+      // Create the new file
+      fs.promises.writeFile(newFilePath, '').then(async () => {
+        vscode.window.showInformationMessage(`File created at: ${newFilePath}`);
+
+        // Show QuickPick with no input (just selections)
+        const open = await vscode.window.showQuickPick(["Yes", "No"], {
+          title: "Open file?",
+          canPickMany: false, // Disable multiple selection
+          placeHolder: "Choose whether to open the file or not" // Optional placeHolder
+        });
+
+        if (open === "Yes") {
+          const newFileDocument = await vscode.workspace.openTextDocument(newFilePath);
+          await vscode.window.showTextDocument(newFileDocument);
+        }
+      }).catch((err) => {
+        vscode.window.showErrorMessage(`Error creating file: ${err.message}`);
+      });
+    }
+  });
+
+  let deleteFileDisposable = vscode.commands.registerCommand('extension.deleteCurrentFile', async () => {
+    const activeEditor = vscode.window.activeTextEditor;
+
+    if (!activeEditor) {
+      vscode.window.showInformationMessage('No file is currently open.');
+      return;
+    }
+
+    const currentFilePath = activeEditor.document.uri.fsPath;
+
+    // Confirm the deletion
+    const confirmDelete = await vscode.window.showQuickPick(['Yes', 'No'], {
+      placeHolder: `Are you sure you want to delete the file: ${path.basename(currentFilePath)}?`
+    });
+
+    if (confirmDelete === 'Yes') {
+      // Delete the file
+      fs.promises.unlink(currentFilePath).then(() => {
+        vscode.window.showInformationMessage(`File deleted: ${currentFilePath}`);
+        vscode.commands.executeCommand("workbench.action.closeActiveEditor"); // Close the editor for the deleted file
+      }).catch((err) => {
+        vscode.window.showErrorMessage(`Error deleting file: ${err.message}`);
+      });
+    }
+  });
+
+  context.subscriptions.push(createFileDisposable);
+  context.subscriptions.push(deleteFileDisposable);
 }
 
-// This method is called when your extension is deactivated
 export function deactivate() {}

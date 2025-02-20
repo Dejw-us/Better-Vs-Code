@@ -14,8 +14,30 @@
   "contributes": {
     "commands": [
       {
-        "command": "better-vs-code.helloWorld",
-        "title": "Hello World"
+        "command": "extension.createFileInCurrentFolder",
+        "title": "Create file"
+      },
+      {
+        "command": "extension.deleteCurrentFile",
+        "title": "Delete file"
+      }
+    ],
+    "keybindings": [
+      {
+        "key": "ctrl+n",
+        "command": "-workbench.action.files.newFile"
+      },
+      {
+        "command": "extension.createFileInCurrentFolder",
+        "key": "ctrl+n",
+        "mac": "cmd+n",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "extension.deleteCurrentFile",
+        "key": "ctrl+delete",
+        "mac": "cmd+delete",
+        "when": "editorTextFocus"
       }
     ]
   },
